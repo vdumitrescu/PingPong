@@ -21,50 +21,34 @@ public class PingPongRight {
      */
     public class PlayPingPongThread extends Thread {
 
-        private final int mFirstSema;
-        private final int mSecondSema;
-        private final int mMaxLoopIterations;
-        private final String mStringToPrint;
-        private final SimpleSemaphore mSemaphore;
+    	private final ChessClock mClock;
         private final CountDownLatch mLatch;
+        private final String mStringToPrint;
+        private final int mMaxLoopIterations;
+        private final int mPlayer;
 
-        public PlayPingPongThread(String stringToPrint,
-        		SimpleSemaphore semaphore, int firstSema, int secondSema,
+        public PlayPingPongThread(String stringToPrint, ChessClock clock, int player,
         		CountDownLatch latch, int maxIterations) {
-            mMaxLoopIterations = maxIterations;
             mStringToPrint = stringToPrint;
-            mSemaphore = semaphore;
-            mFirstSema = firstSema;
-            mSecondSema = secondSema;
+            mClock = clock;
             mLatch = latch;
+            mMaxLoopIterations = maxIterations;
+            mPlayer = player;
         }
 
-        /**
-         * Main event loop that runs in a separate thread of control
-         * and performs the ping/pong algorithm using the
-         * SimpleSemaphores.
-         */
         public void run() {
         	for (int index = 1; index <= mMaxLoopIterations; ++index) {
-        		acquire();
-        		System.out.println(String.format("%s(%d)", mStringToPrint, index));
-        		release();
+                mClock.lock();
+                try {
+                	mClock.waitForTurn(mPlayer);
+                    System.out.println(String.format("%s(%d)", mStringToPrint, index));
+                    mClock.pushButton(mPlayer);
+                } catch (InterruptedException e) {
+				} finally {
+                	mClock.unlock();
+                }
         	}
         	mLatch.countDown();
-        }
-
-        /**
-         * Method for acquiring the appropriate SimpleSemaphore.
-         */
-        private void acquire() {
-            mSemaphore.acquireUninterruptibly(mFirstSema);
-        }
-
-        /**
-         * Method for releasing the appropriate SimpleSemaphore.
-         */
-        private void release() {
-            mSemaphore.release(mSecondSema);
         }
     }
 
@@ -74,12 +58,12 @@ public class PingPongRight {
     public void process(String startString, String pingString, String pongString, String finishString, int maxIterations) throws InterruptedException {
 
     	CountDownLatch latch = new CountDownLatch(2);
-        SimpleSemaphore semaphore = new SimpleSemaphore(true);
+        ChessClock clock = new ChessClock();
 
         System.out.println(startString);
 
-        PlayPingPongThread ping = new PlayPingPongThread(pingString, semaphore, SimpleSemaphore.FIRST_SEMA, SimpleSemaphore.SECOND_SEMA, latch, maxIterations);
-        PlayPingPongThread pong = new PlayPingPongThread(pongString, semaphore, SimpleSemaphore.SECOND_SEMA, SimpleSemaphore.FIRST_SEMA, latch, maxIterations);
+        PlayPingPongThread ping = new PlayPingPongThread(pingString, clock, ChessClock.PLAYER_ONE, latch, maxIterations);
+        PlayPingPongThread pong = new PlayPingPongThread(pongString, clock, ChessClock.PLAYER_TWO, latch, maxIterations);
 
         // Starting pong first should not change the outcome
         pong.start();
