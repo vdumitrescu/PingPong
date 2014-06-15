@@ -19,7 +19,7 @@ public class PingPongRight {
      *        using the SimpleSemaphore to alternate printing "ping"
      *        and "pong" to the console display.
      */
-    public static class PlayPingPongThread extends Thread {
+    public class PlayPingPongThread extends Thread {
 
         private final int mFirstSema;
         private final int mSecondSema;
